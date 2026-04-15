@@ -1,0 +1,513 @@
+import { useState } from "react";
+
+const ROUTES = [
+  { id:"cherry-creek",     name:"Cherry Creek Trail",                   type:"Paved Path",              distance:"12–40 mi", gain:"~200 ft",         difficulty:"Easy",        notes:"Fully paved from downtown Denver to Cherry Creek Reservoir. Almost zero car crossings. Great Tuesday short ride or Friday easy option.",                                                                                                          bestFor:["Tuesday rides","Friday easy","Base phase"],      color:"#4ade80", wednesday:false },
+  { id:"chatfield",        name:"Chatfield State Park Loop",            type:"Paved Path + Low-traffic", distance:"15–30 mi", gain:"~400 ft",         difficulty:"Easy–Medium", notes:"Paved trails with rolling terrain and Front Range views. Small $10/car entry. Great Friday option or Tuesday ride.",                                                                                                                         bestFor:["Friday option","Rolling hills","Base phase"],    color:"#4ade80", wednesday:false },
+  { id:"boulder-creek",    name:"Boulder Creek Path → Canyon",          type:"Paved Path",              distance:"15–35 mi", gain:"~800–1,500 ft",   difficulty:"Easy–Medium", notes:"Starts near downtown Boulder and follows the creek west into Boulder Canyon. Mostly car-free, paved, beautiful. Ride as far as you want — more climbing the further you go. Perfect Wednesday since you're already in Boulder.",            bestFor:["Wednesday Boulder ride","Climbing intro","Base"],color:"#4ade80", wednesday:true  },
+  { id:"boulder-sugarloaf",name:"Boulder → Sugarloaf Mountain Rd",     type:"Road (low traffic)",      distance:"20–35 mi", gain:"~2,000–2,800 ft", difficulty:"Hard",        notes:"Head west from Boulder up Canyon Blvd into Boulder Canyon, then climb Sugarloaf Mountain Rd. Low traffic, forested switchbacks, sustained grades. Return via Four Mile Canyon for a loop. A go-to Wednesday climb.",                    bestFor:["Wednesday climbing","Threshold work","Build II+"],color:"#f97316",wednesday:true  },
+  { id:"boulder-lefthand", name:"Left Hand Canyon (Boulder)",           type:"Road (low traffic)",      distance:"20–40 mi", gain:"~1,500–3,000 ft", difficulty:"Medium–Hard", notes:"Start near north Boulder, ride up Left Hand Canyon Rd — one of the best low-traffic canyon climbs near Boulder. Long, sustained, beautiful. Can push all the way to Ward (~3,000 ft) for a monster Wednesday.",                            bestFor:["Wednesday climbing","Long efforts","Weeks 6–13"],color:"#fbbf24", wednesday:true  },
+  { id:"golden-peaks",     name:"Peaks to Plains (Clear Creek Canyon)", type:"Paved Path",              distance:"20–50 mi", gain:"~1,200–2,500 ft", difficulty:"Medium",      notes:"Start at Big Easy Trailhead in Golden. Fully paved, follows Clear Creek Canyon — protected from traffic with dramatic canyon walls. Ride all the way to Idaho Springs for a huge day (50 mi, 3,500 ft).",                                 bestFor:["Sat long rides","Tue climbing ride","Build phase"],color:"#fbbf24",wednesday:false },
+  { id:"golden-lookout",   name:"Golden → Lookout Mountain",            type:"Road (low traffic)",      distance:"20–35 mi", gain:"~2,200 ft",        difficulty:"Hard",        notes:"Start in Golden, climb Lookout Mountain Rd (6.4 mi, ~1,500 ft). Beloved cycling route — drivers expect you. Combine with Clear Creek Canyon descent for a great loop.",                                                                  bestFor:["Sat rides","Race prep","Build II"],               color:"#f97316", wednesday:false },
+  { id:"deer-creek",       name:"Deer Creek Canyon Road",               type:"Road (low traffic)",      distance:"25–45 mi", gain:"~2,500–3,500 ft", difficulty:"Hard",        notes:"Drive to Deer Creek Canyon Park trailhead (~20 mi SW of Denver). Low car traffic, gorgeous canyon. Extend to Hwy 285 for 3,000+ ft gain. Excellent race simulation Saturday.",                                                            bestFor:["Big climbs","Race simulation","Phases 3–4"],     color:"#f97316", wednesday:false },
+  { id:"squaw-pass",       name:"Squaw Pass / Echo Lake",               type:"Road",                    distance:"40–60 mi", gain:"~4,000–5,000 ft", difficulty:"Very Hard",   notes:"Drive to Bergen Park (off I-70), climb Squaw Pass Rd to Echo Lake at ~10,600 ft. High altitude, sustained climbing, stunning views. Save for weeks 11 and 13 as peak race simulation.",                                               bestFor:["Peak Saturdays","Race simulation","Altitude"],    color:"#60a5fa", wednesday:false },
+  { id:"waterton",         name:"Waterton Canyon",                      type:"Car-Free Road",            distance:"12–26 mi", gain:"~1,200 ft",        difficulty:"Medium",      notes:"Closed to vehicles — smooth road following the South Platte River into a canyon. Free parking at Wadsworth & Waterton Rd. Often see bighorn sheep. Manageable on road bike.",                                                           bestFor:["Friday option","Moderate climbing","Mid-phase"], color:"#fbbf24", wednesday:false },
+];
+
+// ── LIFT TEMPLATES ────────────────────────────────────────────────────────────
+const LIFTS = {
+  legsarms: {
+    label:"Legs + Arms",
+    icon:"🦵",
+    color:"#4ade80",
+    day:"Monday",
+    exercises:[
+      "Squat 4×6–8",
+      "Romanian Deadlift 3×10",
+      "Leg Press 3×12",
+      "Walking Lunges 3×12/leg",
+      "Calf Raises 4×15–20",
+      "Barbell or DB Curls 3×10–12",
+      "Hammer Curls 3×12",
+      "Tricep Dips or Pushdowns 3×12",
+      "Ab Wheel or Dead Bug 3×12",
+    ],
+    tip:"Monday is your hardest gym day — squats and lunges first while you're fresh. Curls and triceps are a finisher. Keep 48 hrs between this and Thursday's pull day.",
+  },
+  push: {
+    label:"Upper Body Push",
+    icon:"⬆",
+    color:"#f97316",
+    day:"Tuesday",
+    exercises:[
+      "Bench Press 4×6–8",
+      "Overhead Press 3×8–10",
+      "Incline DB Press 3×10",
+      "Lateral Raises 3×12–15",
+      "Cable Crunches 3×15",
+      "Plank 3×45s",
+    ],
+    tip:"Tuesday push is paired with a short ride. Do the lift first, then hop on the bike — your chest and shoulders don't affect your pedal stroke, so the order is fine either way.",
+  },
+  pull: {
+    label:"Full Body Pull",
+    icon:"⬇",
+    color:"#60a5fa",
+    day:"Thursday",
+    exercises:[
+      "Deadlift 4×5",
+      "Pull-ups or Lat Pulldown 4×8–10",
+      "Seated Cable Row 3×10–12",
+      "Face Pulls 3×15",
+      "Single-Leg RDL 3×10/leg",
+      "Glute Bridge or Hip Thrust 3×12",
+      "Hanging Leg Raises 3×15",
+      "Russian Twists 3×20",
+    ],
+    tip:"Thursday pull includes single-leg RDL and hip thrusts — these directly build the posterior chain power you need for sustained climbing. Rows and face pulls protect your posture on long rides.",
+  },
+};
+
+// ── SCHEDULE FORMAT ────────────────────────────────────────────────────────────
+// Mon  = Workout only: Legs + Arms
+// Tue  = Upper body push lift + short ride (Peloton or outdoor)
+// Wed  = Incline bike only — W1-6: Peloton or Golden rides; W7+: Boulder outdoor
+// Thu  = Full body pull workout only
+// Fri  = Optional: outdoor ride, hike, or swim — no workout
+// Sat  = Long outdoor ride
+// Sun  = Rest / yoga / stretching
+
+const WEEKS = [
+  // ── PHASE 1: BASE ─────────────────────────────────────────────────────────
+  { week:1, phase:1, dates:"Apr 13–19", note:"", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms",                    miles:null,    detail:"Squats, RDL, lunges, calves, curls, triceps, core",                        lift:"legsarms" },
+    { day:"Tue", type:"PELOTON", subtype:"Endurance + Hills",              miles:"8–10",  detail:"45 min Zone 2 — flat first half, add incline second half",                 lift:"push"     },
+    { day:"Wed", type:"PELOTON", subtype:"Incline Ride",                   miles:"10–12", detail:"45 min steady incline — simulate hill climbing, practice cadence on resistance", lift:null },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull",                 miles:null,    detail:"Deadlifts, pull-ups, rows, face pulls, single-leg RDL, core",              lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Hike / Swim / Easy Ride (opt)", miles:null,    detail:"Your choice — hike, pool swim, easy outdoor ride, or rest",                lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Cherry Creek Trail",             miles:"15–18", detail:"Easy pace, full path to reservoir and back",                               lift:null,  routeId:"cherry-creek" },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"Light stretching, yoga, or full rest",                                     lift:null       },
+  ]},
+  { week:2, phase:1, dates:"Apr 20–26", note:"", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms",                    miles:null,    detail:"Squats, RDL, lunges, calves, curls, triceps, core",                        lift:"legsarms" },
+    { day:"Tue", type:"PELOTON", subtype:"Climb Ride",                     miles:"10–12", detail:"50 min sustained incline — practice seated climbing cadence",              lift:"push"     },
+    { day:"Wed", type:"OUTDOOR", subtype:"Peaks to Plains – Golden (short)", miles:"14–18", detail:"Paved canyon trail from Golden — easy effort up Clear Creek Canyon, good incline intro", lift:null, routeId:"golden-peaks" },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull",                 miles:null,    detail:"Deadlifts, pull-ups, rows, face pulls, single-leg RDL, core",              lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Chatfield Easy / Hike (opt)",   miles:null,    detail:"Easy rolling ride at Chatfield, trail hike, or pool swim",                 lift:null,  routeId:"chatfield"    },
+    { day:"Sat", type:"OUTDOOR", subtype:"Cherry Creek → Reservoir",       miles:"20–24", detail:"Push a bit further, still easy effort",                                   lift:null,  routeId:"cherry-creek" },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  { week:3, phase:1, dates:"Apr 27–May 3", note:"", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms",                    miles:null,    detail:"Squats, RDL, lunges, calves, curls, triceps, core",                        lift:"legsarms" },
+    { day:"Tue", type:"PELOTON", subtype:"Incline Intervals",              miles:"10–12", detail:"55 min — 5×5 min steep incline, standing vs seated climbing technique",    lift:"push"     },
+    { day:"Wed", type:"PELOTON", subtype:"Climb Intervals",                miles:"12–14", detail:"60 min — 5×6 min at steep resistance, practice standing and seated climbing technique", lift:null },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull",                 miles:null,    detail:"Deadlifts, pull-ups, rows, face pulls, single-leg RDL, core",              lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Outdoor Ride / Hike (opt)",     miles:null,    detail:"Easy trail hike, swim, or short easy outdoor ride",                        lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Chatfield + Roxborough Hilly",   miles:"22–26", detail:"Seek the hilliest route, practice sustained climbing",                    lift:null,  routeId:"chatfield"    },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  { week:4, phase:1, dates:"May 4–10", note:"⟳ Deload", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms (light)",            miles:null,    detail:"Cut sets by 30% — deload week, same moves, less volume",                   lift:"legsarms" },
+    { day:"Tue", type:"PELOTON", subtype:"Easy Spin",                      miles:"8–10",  detail:"Light 40 min ride, no intensity",                                         lift:"push"     },
+    { day:"Wed", type:"PELOTON", subtype:"Easy Incline Spin",              miles:"8–10",  detail:"Light incline ride — deload week, keep it mellow",                        lift:null       },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull (light)",         miles:null,    detail:"Cut sets by 30%",                                                         lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Rest or easy walk (opt)",       miles:null,    detail:"Full rest, gentle walk, or easy swim — deload week",                      lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Cherry Creek Easy",              miles:"14–16", detail:"Flat, no pressure, enjoy it",                                             lift:null,  routeId:"cherry-creek" },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  // ── PHASE 2: BUILD I ──────────────────────────────────────────────────────
+  { week:5, phase:2, dates:"May 11–17", note:"", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms",                    miles:null,    detail:"Squats, RDL, lunges, calves, curls, triceps, core",                        lift:"legsarms" },
+    { day:"Tue", type:"OUTDOOR", subtype:"Peaks to Plains – Golden",       miles:"18–22", detail:"Paved canyon trail from Golden — this is your Tue ride as the plan ramps up", lift:"push", routeId:"golden-peaks" },
+    { day:"Wed", type:"OUTDOOR", subtype:"Peaks to Plains – Full Canyon",  miles:"18–22", detail:"Golden → push further up Clear Creek Canyon, first real climbing effort. ~1,200 ft.", lift:null, routeId:"golden-peaks" },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull",                 miles:null,    detail:"Deadlifts, pull-ups, rows, face pulls, single-leg RDL, core",              lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Waterton Canyon or Hike (opt)", miles:null,    detail:"Short Waterton ride, trail hike, or swim — active recovery",               lift:null,  routeId:"waterton"     },
+    { day:"Sat", type:"OUTDOOR", subtype:"Waterton Canyon",                miles:"28–32", detail:"Car-free canyon road, steady climbing effort",                             lift:null,  routeId:"waterton"     },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  { week:6, phase:2, dates:"May 18–24", note:"", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms",                    miles:null,    detail:"Squats, RDL, lunges, calves, curls, triceps, core",                        lift:"legsarms" },
+    { day:"Tue", type:"OUTDOOR", subtype:"Peaks to Plains – Full Canyon",  miles:"20–25", detail:"Push further up Clear Creek Canyon from Golden, 1,800+ ft gain",          lift:"push", routeId:"golden-peaks" },
+    { day:"Wed", type:"OUTDOOR", subtype:"Golden → Lookout Mountain",      miles:"20–25", detail:"Climb Lookout Mtn Rd from Golden — sustained climb, ~1,500 ft. Last Golden Wednesday before Boulder starts.", lift:null, routeId:"golden-lookout" },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull",                 miles:null,    detail:"Deadlifts, pull-ups, rows, face pulls, single-leg RDL, core",              lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Easy Ride / Hike / Swim (opt)", miles:null,    detail:"Active recovery — trail hike, gym swim, or Cherry Creek easy spin",        lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Lookout Mtn from Golden",        miles:"32–38", detail:"Climb Lookout Mtn Rd, descend via Clear Creek Canyon — ~2,200 ft",        lift:null,  routeId:"golden-lookout" },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  { week:7, phase:2, dates:"May 25–31", note:"", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms",                    miles:null,    detail:"Squats, RDL, lunges, calves, curls, triceps, core",                        lift:"legsarms" },
+    { day:"Tue", type:"PELOTON", subtype:"Threshold Climb",                miles:"14–16", detail:"75 min — 2×20 min threshold on steep incline, simulate mountain climbing", lift:"push"     },
+    { day:"Wed", type:"OUTDOOR", subtype:"Sugarloaf + Four Mile Loop",     miles:"24–28", detail:"After work — Canyon Blvd to Sugarloaf, return via Four Mile Canyon. First real loop. ~2,000 ft.", lift:null, routeId:"boulder-sugarloaf" },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull",                 miles:null,    detail:"Deadlifts, pull-ups, rows, face pulls, single-leg RDL, core",              lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Hike / Swim / Easy Ride (opt)", miles:null,    detail:"Something enjoyable and easy — trail, pool, or flat spin",                 lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Lookout Mtn + Genesee",          miles:"38–45", detail:"Extend Lookout Mtn to Genesee — bigger day, ~2,800 ft",                   lift:null,  routeId:"golden-lookout" },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  { week:8, phase:2, dates:"Jun 1–7", note:"⟳ Deload", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms (light)",            miles:null,    detail:"Cut sets by 30%",                                                         lift:"legsarms" },
+    { day:"Tue", type:"PELOTON", subtype:"Easy Spin",                      miles:"8–10",  detail:"No intensity — deload",                                                   lift:"push"     },
+    { day:"Wed", type:"PELOTON", subtype:"Easy Incline Spin",              miles:"8–10",  detail:"Light incline only — deload week",                                        lift:null       },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull (light)",         miles:null,    detail:"Cut sets by 30%",                                                         lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Rest or easy swim (opt)",       miles:null,    detail:"Full rest or gentle swim — deload week",                                  lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Chatfield Easy Loop",            miles:"16–20", detail:"Easy rolling terrain, enjoy it",                                          lift:null,  routeId:"chatfield"    },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  // ── PHASE 3: BUILD II ─────────────────────────────────────────────────────
+  { week:9, phase:3, dates:"Jun 8–14", note:"", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms",                    miles:null,    detail:"Squats, RDL, lunges, calves, curls, triceps, core",                        lift:"legsarms" },
+    { day:"Tue", type:"OUTDOOR", subtype:"Deer Creek Canyon",              miles:"22–28", detail:"Low-traffic canyon, 3×8 min threshold blocks during the climb",           lift:"push", routeId:"deer-creek"   },
+    { day:"Wed", type:"OUTDOOR", subtype:"Left Hand Canyon – Further",     miles:"26–30", detail:"After work — further up Left Hand Canyon than week 6. Target 2,000+ ft.", lift:null,  routeId:"boulder-lefthand" },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull",                 miles:null,    detail:"Deadlifts, pull-ups, rows, face pulls, single-leg RDL, core",              lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Easy Ride / Hike (opt)",        miles:null,    detail:"Active recovery — hike, swim, or short flat ride. Big Saturday ahead.",   lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Peaks to Plains → Idaho Springs",miles:"45–50", detail:"Big day — ride to Idaho Springs via Clear Creek Canyon, 3,500+ ft",      lift:null,  routeId:"golden-peaks" },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"You'll need it",                                                           lift:null       },
+  ]},
+  { week:10, phase:3, dates:"Jun 15–21", note:"", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms",                    miles:null,    detail:"Squats, RDL, lunges, calves, curls, triceps, core",                        lift:"legsarms" },
+    { day:"Tue", type:"OUTDOOR", subtype:"Lookout Mtn from Golden",        miles:"25–30", detail:"Threshold effort on the full climb, 2,200 ft gain",                       lift:"push", routeId:"golden-lookout" },
+    { day:"Wed", type:"OUTDOOR", subtype:"Left Hand Canyon → Ward",        miles:"28–34", detail:"After work — push all the way to Ward. ~3,000 ft. Hardest Wednesday of the plan. 🔥", lift:null, routeId:"boulder-lefthand" },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull",                 miles:null,    detail:"Deadlifts, pull-ups, rows, face pulls, single-leg RDL, core",              lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Rest or easy swim (opt)",       miles:null,    detail:"Truly rest or gentle swim — massive Saturday ahead",                      lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Lookout Mtn + Deer Creek",       miles:"50–55", detail:"Back-to-back canyon climbs, race simulation effort",                      lift:null,  routeId:"golden-lookout" },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  { week:11, phase:3, dates:"Jun 22–28", note:"", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms",                    miles:null,    detail:"Squats, RDL, lunges, calves, curls, triceps, core",                        lift:"legsarms" },
+    { day:"Tue", type:"OUTDOOR", subtype:"Deer Creek Canyon",              miles:"25–30", detail:"2×20 min threshold blocks on the climb",                                  lift:"push", routeId:"deer-creek"   },
+    { day:"Wed", type:"OUTDOOR", subtype:"Sugarloaf + Four Mile – Race Pace", miles:"28–34", detail:"After work — full Sugarloaf loop at race effort. ~2,500 ft. Hardest Wednesday of the plan.", lift:null, routeId:"boulder-sugarloaf" },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull",                 miles:null,    detail:"Deadlifts, pull-ups, rows, face pulls, single-leg RDL, core",              lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Rest (big Saturday ahead)",     miles:null,    detail:"Skip it — you need the legs for tomorrow",                                 lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Squaw Pass / Echo Lake",         miles:"55–62", detail:"Drive to Bergen Park — climb to Echo Lake at altitude. Big day.",          lift:null,  routeId:"squaw-pass"   },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"Legs will be grateful",                                                    lift:null       },
+  ]},
+  { week:12, phase:3, dates:"Jun 29–Jul 5", note:"⟳ Deload", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms (light)",            miles:null,    detail:"Cut sets by 30%",                                                         lift:"legsarms" },
+    { day:"Tue", type:"PELOTON", subtype:"Easy Spin",                      miles:"8–10",  detail:"No intensity — deload",                                                   lift:"push"     },
+    { day:"Wed", type:"PELOTON", subtype:"Easy Incline Spin",              miles:"8–10",  detail:"Light incline only — deload week",                                        lift:null       },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull (light)",         miles:null,    detail:"Cut sets by 30%",                                                         lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Easy walk / swim (opt)",        miles:null,    detail:"Gentle activity only",                                                    lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Chatfield Easy Loop",            miles:"16–20", detail:"Flat, no pressure, stay fresh",                                           lift:null,  routeId:"chatfield"    },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  // ── PHASE 4: PEAK & TAPER ─────────────────────────────────────────────────
+  { week:13, phase:4, dates:"Jul 6–12", note:"", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms",                    miles:null,    detail:"Squats, RDL, lunges, calves, curls, triceps, core",                        lift:"legsarms" },
+    { day:"Tue", type:"OUTDOOR", subtype:"Deer Creek Canyon – Punchy",     miles:"22–28", detail:"6×4 min punchy efforts on the climb",                                     lift:"push", routeId:"deer-creek"   },
+    { day:"Wed", type:"OUTDOOR", subtype:"Left Hand Canyon – Race Pace",   miles:"28–32", detail:"After work — Left Hand at race effort. Final hard Wednesday of the plan.", lift:null,  routeId:"boulder-lefthand" },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull",                 miles:null,    detail:"Deadlifts, pull-ups, rows, face pulls, single-leg RDL, core",              lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Rest (big Saturday ahead)",     miles:null,    detail:"Skip it — biggest Saturday of the plan is tomorrow",                      lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"🏔 Squaw Pass – Full Day",        miles:"55–62", detail:"FINAL LONG RIDE — full effort, 4,000+ ft. Race mentality.",               lift:null,  routeId:"squaw-pass"   },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  { week:14, phase:4, dates:"Jul 13–19", note:"↓ Taper", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms (light)",            miles:null,    detail:"Taper — cut sets by 30%, keep the weights the same",                       lift:"legsarms" },
+    { day:"Tue", type:"PELOTON", subtype:"Easy-Medium Climb",              miles:"10–12", detail:"Keep legs moving, light incline only",                                    lift:"push"     },
+    { day:"Wed", type:"OUTDOOR", subtype:"Boulder Creek Easy",             miles:"12–14", detail:"After work — easy path roll, no effort",                                  lift:null,  routeId:"boulder-creek" },
+    { day:"Thu", type:"LIFT",    subtype:"Full Body Pull (light)",         miles:null,    detail:"Cut sets by 30%",                                                         lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Easy ride / hike / swim (opt)", miles:null,    detail:"Very easy active recovery or rest",                                       lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Chatfield Easy Loop",            miles:"16–18", detail:"Easy effort, no pressure, enjoy the ride",                                lift:null,  routeId:"chatfield"    },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  { week:15, phase:4, dates:"Jul 20–26", note:"↓↓ Deep Taper", rides:[
+    { day:"Mon", type:"LIFT",    subtype:"Legs + Arms – 4 exercises only", miles:null,    detail:"Squats, lunges, curls, triceps — keep it short and light",                lift:"legsarms" },
+    { day:"Tue", type:"PELOTON", subtype:"Easy Spin",                      miles:"8–10",  detail:"Keep legs fresh, zero hard effort",                                       lift:"push"     },
+    { day:"Wed", type:"OUTDOOR", subtype:"Boulder Creek Shakeout",         miles:"8–10",  detail:"After work — very short, very easy, just move the legs",                  lift:null,  routeId:"boulder-creek" },
+    { day:"Thu", type:"LIFT",    subtype:"Pull – 3 exercises only",        miles:null,    detail:"Rows, face pulls, dead bug — keep it under 25 min",                       lift:"pull"     },
+    { day:"Fri", type:"ACTIVE",  subtype:"Easy walk or rest (opt)",       miles:null,    detail:"Gentle walk, pool stretch, or full rest",                                 lift:null       },
+    { day:"Sat", type:"OUTDOOR", subtype:"Cherry Creek Shakeout",          miles:"8–10",  detail:"Short and easy — just spin the legs out",                                 lift:null,  routeId:"cherry-creek" },
+    { day:"Sun", type:"REST",    subtype:"Rest / Yoga / Stretch",          miles:null,    detail:"",                                                                         lift:null       },
+  ]},
+  { week:16, phase:4, dates:"Jul 27–Aug 1", note:"🏁 Race Week", rides:[
+    { day:"Mon", type:"REST",    subtype:"Rest",                           miles:null,    detail:"Final week — protect your body entirely",                                 lift:null       },
+    { day:"Tue", type:"PELOTON", subtype:"Easy Spin",                      miles:"8",     detail:"Light legs, eat well, hydrate",                                            lift:null       },
+    { day:"Wed", type:"REST",    subtype:"Rest",                           miles:null,    detail:"Skip Boulder ride — save the legs",                                        lift:null       },
+    { day:"Thu", type:"PELOTON", subtype:"Short Openers",                  miles:"6",     detail:"3×30 sec hard, then easy spin out",                                        lift:null       },
+    { day:"Fri", type:"REST",    subtype:"Rest",                           miles:null,    detail:"Pack gear, sleep early, carb load",                                        lift:null       },
+    { day:"Sat", type:"REST",    subtype:"Full Rest",                      miles:null,    detail:"Feet up, visualize the race, carb load tonight",                           lift:null       },
+    { day:"Sun", type:"RACE",    subtype:"🏆 COPPER TRIANGLE",             miles:"79",    detail:"79 miles · 6,500 ft of climbing · You're ready.",                         lift:null       },
+  ]},
+];
+
+function parseMileRange(str) {
+  if (!str) return [0,0];
+  if (str==="79") return [79,79];
+  const parts = str.split("–");
+  if (parts.length===2) return [parseFloat(parts[0]),parseFloat(parts[1])];
+  return [parseFloat(parts[0]),parseFloat(parts[0])];
+}
+function weeklyMiles(rides) {
+  let lo=0, hi=0;
+  rides.forEach(r=>{
+    if(r.miles){ const [a,b]=parseMileRange(r.miles); lo+=a; hi+=b; }
+  });
+  return lo===hi ? `${Math.round(lo)}` : `${Math.round(lo)}–${Math.round(hi)}`;
+}
+
+const PHASES = [
+  { id:1, name:"Base",        weeks:"W1–4",  color:"#4ade80", desc:"Aerobic foundation. Establish the weekly rhythm. Boulder Creek on Wednesdays." },
+  { id:2, name:"Build I",     weeks:"W5–8",  color:"#fbbf24", desc:"Wednesday climbs escalate. Tue rides get longer and hillier." },
+  { id:3, name:"Build II",    weeks:"W9–12", color:"#f97316", desc:"Big Wednesday climbs — Left Hand to Ward. Race intensity on Saturdays." },
+  { id:4, name:"Peak & Taper",weeks:"W13–16",color:"#60a5fa", desc:"Peak long ride W13, taper W14–15. Lifts cut back. Race week = rest." },
+];
+const PS = {
+  1:{color:"#4ade80",dim:"#16a34a",bg:"rgba(74,222,128,0.07)",border:"rgba(74,222,128,0.2)"},
+  2:{color:"#fbbf24",dim:"#d97706",bg:"rgba(251,191,36,0.07)",border:"rgba(251,191,36,0.2)"},
+  3:{color:"#f97316",dim:"#ea580c",bg:"rgba(249,115,22,0.07)",border:"rgba(249,115,22,0.2)"},
+  4:{color:"#60a5fa",dim:"#3b82f6",bg:"rgba(96,165,250,0.07)",border:"rgba(96,165,250,0.2)"},
+};
+const TYPE_STYLE = {
+  OUTDOOR:{label:"Outdoor", color:"#4ade80", bg:"rgba(74,222,128,0.15)"},
+  PELOTON:{label:"Peloton", color:"#a78bfa", bg:"rgba(167,139,250,0.15)"},
+  LIFT:   {label:"Lift",    color:"#f97316", bg:"rgba(249,115,22,0.12)"},
+  ACTIVE: {label:"Optional",color:"#64748b", bg:"rgba(100,116,139,0.12)"},
+  REST:   {label:"Rest",    color:"#475569", bg:"rgba(71,85,105,0.15)"},
+  RACE:   {label:"Race Day",color:"#fbbf24", bg:"rgba(251,191,36,0.2)"},
+};
+const LIFT_COLORS = {legsarms:"#4ade80", push:"#f97316", pull:"#60a5fa"};
+
+const DAY_ROLES = [
+  {day:"Mon", role:"Legs + Arms",    color:"#4ade80"},
+  {day:"Tue", role:"Push + Ride",    color:"#f97316"},
+  {day:"Wed", role:"⛰ Incline Bike", color:"#60a5fa"},
+  {day:"Thu", role:"Full Pull",      color:"#60a5fa"},
+  {day:"Fri", role:"Optional",       color:"#475569"},
+  {day:"Sat", role:"Long Ride",      color:"#4ade80"},
+  {day:"Sun", role:"🧘 Rest",         color:"#334155"},
+];
+
+export default function App() {
+  const [tab,setTab] = useState("plan");
+  const [expandedWeek,setExpandedWeek] = useState(null);
+  const [expandedLift,setExpandedLift] = useState(null);
+  const [filterPhase,setFilterPhase] = useState(null);
+  const [expandedRoute,setExpandedRoute] = useState(null);
+  const visibleWeeks = filterPhase ? WEEKS.filter(w=>w.phase===filterPhase) : WEEKS;
+
+  return (
+    <div style={{minHeight:"100vh",background:"#07111d",color:"#e2e8f0",fontFamily:"'DM Mono','Fira Code',monospace",fontSize:"13px"}}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Unbounded:wght@700;900&display=swap" rel="stylesheet"/>
+
+      {/* HEADER */}
+      <div style={{background:"linear-gradient(160deg,#0a1f35 0%,#07111d 100%)",borderBottom:"1px solid #0f2d4a",padding:"36px 20px 28px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+        <svg viewBox="0 0 900 100" style={{position:"absolute",bottom:0,left:0,width:"100%",opacity:0.1}} preserveAspectRatio="none">
+          <polygon points="0,100 100,55 200,75 350,20 500,55 640,15 780,50 900,25 900,100" fill="#60a5fa"/>
+          <polygon points="0,100 150,70 280,85 420,40 580,65 700,30 850,60 900,45 900,100" fill="#3b82f6" opacity="0.5"/>
+        </svg>
+        <div style={{fontSize:"10px",letterSpacing:"0.3em",color:"#3b82f6",marginBottom:"8px"}}>DENVER → COPPER MOUNTAIN</div>
+        <h1 style={{fontFamily:"'Unbounded',sans-serif",fontSize:"clamp(32px,7vw,60px)",fontWeight:900,margin:"0 0 4px",color:"#f8fafc",lineHeight:1,letterSpacing:"-0.02em"}}>COPPER TRIANGLE</h1>
+        <div style={{fontFamily:"'Unbounded'",fontSize:"clamp(11px,2vw,16px)",color:"#3b82f6",letterSpacing:"0.08em",marginBottom:"20px"}}>16-WEEK TRAINING PLAN · AUG 1, 2025</div>
+        <div style={{display:"flex",justifyContent:"center",gap:"28px",flexWrap:"wrap"}}>
+          {[["79 mi","Race Distance"],["6,500 ft","Elevation"],["16 wks","Training"],["Apr 13","Start"]].map(([v,l])=>(
+            <div key={l}><div style={{fontFamily:"'Unbounded'",fontSize:"20px",color:"#f8fafc"}}>{v}</div><div style={{fontSize:"9px",letterSpacing:"0.2em",color:"#334155",textTransform:"uppercase"}}>{l}</div></div>
+          ))}
+        </div>
+      </div>
+
+      {/* TABS */}
+      <div style={{display:"flex",borderBottom:"1px solid #0f2d4a",background:"#07111d",padding:"0 20px",overflowX:"auto"}}>
+        {[["plan","📅 Training Plan"],["lifts","🏋 Workouts"],["routes","🗺 Denver Routes"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)} style={{padding:"12px 16px",background:"none",border:"none",borderBottom:`2px solid ${tab===id?"#3b82f6":"transparent"}`,color:tab===id?"#60a5fa":"#475569",cursor:"pointer",fontFamily:"inherit",fontSize:"11px",letterSpacing:"0.1em",whiteSpace:"nowrap"}}>{label}</button>
+        ))}
+      </div>
+
+      <div style={{maxWidth:"880px",margin:"0 auto",padding:"16px 16px 80px"}}>
+
+        {/* ── PLAN TAB ── */}
+        {tab==="plan"&&(<>
+          {/* Weekly structure strip */}
+          <div style={{marginBottom:"14px",background:"#0b1929",border:"1px solid #0f2d4a",borderRadius:"8px",padding:"12px 14px"}}>
+            <div style={{fontSize:"9px",letterSpacing:"0.2em",color:"#334155",marginBottom:"8px"}}>WEEKLY STRUCTURE</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"4px"}}>
+              {DAY_ROLES.map(({day,role,color})=>(
+                <div key={day} style={{textAlign:"center",padding:"6px 4px",background:`${color}0d`,borderRadius:"4px",border:`1px solid ${color}20`}}>
+                  <div style={{fontSize:"9px",fontWeight:600,color,marginBottom:"3px"}}>{day}</div>
+                  <div style={{fontSize:"8px",color:"#475569",lineHeight:1.3}}>{role}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Phase filter */}
+          <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"14px",alignItems:"center"}}>
+            <span style={{fontSize:"9px",letterSpacing:"0.2em",color:"#334155",marginRight:"4px"}}>PHASE:</span>
+            <button onClick={()=>setFilterPhase(null)} style={{padding:"4px 12px",borderRadius:"20px",border:`1px solid ${!filterPhase?"#94a3b8":"#1e293b"}`,background:!filterPhase?"#1e293b":"transparent",color:!filterPhase?"#e2e8f0":"#475569",cursor:"pointer",fontFamily:"inherit",fontSize:"10px"}}>All</button>
+            {PHASES.map(p=>(
+              <button key={p.id} onClick={()=>setFilterPhase(filterPhase===p.id?null:p.id)} style={{padding:"4px 12px",borderRadius:"20px",border:`1px solid ${filterPhase===p.id?p.color:"#1e293b"}`,background:filterPhase===p.id?`${p.color}18`:"transparent",color:filterPhase===p.id?p.color:"#475569",cursor:"pointer",fontFamily:"inherit",fontSize:"10px"}}>
+                {p.name} <span style={{opacity:0.6}}>{p.weeks}</span>
+              </button>
+            ))}
+          </div>
+
+          {visibleWeeks.map(w=>{
+            const s=PS[w.phase]; const isOpen=expandedWeek===w.week;
+            const computedMiles = w.week===16 ? "Race Week 🏁" : weeklyMiles(w.rides)+" mi";
+            return (
+              <div key={w.week} style={{marginBottom:"8px",border:`1px solid ${w.week===16?"#1e3a5f":s.border}`,borderRadius:"8px",overflow:"hidden",background:"#0b1929"}}>
+                <button onClick={()=>setExpandedWeek(isOpen?null:w.week)} style={{width:"100%",display:"flex",alignItems:"center",gap:"10px",padding:"12px 14px",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:"inherit",textAlign:"left"}}>
+                  <div style={{minWidth:"34px",height:"34px",borderRadius:"6px",background:s.bg,border:`1px solid ${s.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10px",color:s.color,fontWeight:500}}>W{w.week}</div>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"7px",flexWrap:"wrap"}}>
+                      <span style={{color:"#e2e8f0",fontSize:"13px"}}>{w.dates}</span>
+                      {w.note&&<span style={{fontSize:"9px",padding:"2px 6px",borderRadius:"3px",background:w.note.includes("Deload")?"rgba(251,191,36,0.1)":"rgba(96,165,250,0.12)",color:w.note.includes("Deload")?"#fbbf24":"#60a5fa"}}>{w.note}</span>}
+                    </div>
+                    <div style={{fontSize:"10px",color:"#334155",marginTop:"2px"}}>
+                      <span style={{color:s.dim}}>{PHASES.find(p=>p.id===w.phase)?.name}</span>
+                      <span style={{margin:"0 5px"}}>·</span>
+                      <span style={{color:"#94a3b8"}}>{computedMiles}</span>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:"2px",flexShrink:0}}>
+                    {w.rides.map((r,i)=><div key={i} style={{width:"5px",height:"5px",borderRadius:"50%",background:r.type==="REST"?"#1e293b":r.type==="RACE"?"#fbbf24":r.type==="LIFT"?"#f97316":r.type==="ACTIVE"?"#334155":r.type==="OUTDOOR"?"#4ade80":"#a78bfa"}}/>)}
+                  </div>
+                  <span style={{color:"#334155",fontSize:"12px",flexShrink:0}}>{isOpen?"▲":"▼"}</span>
+                </button>
+
+                {isOpen&&(
+                  <div style={{borderTop:`1px solid ${s.border}`}}>
+                    {w.rides.map((r,i)=>{
+                      const ts=TYPE_STYLE[r.type];
+                      const liftKey=r.lift; const lift=liftKey?LIFTS[liftKey]:null;
+                      const liftOpen=expandedLift===`${w.week}-${i}`;
+                      const isWed=r.day==="Wed";
+                      const isSun=r.day==="Sun";
+                      const isOpt=r.type==="ACTIVE";
+                      const isRaceDay=r.type==="RACE";
+                      const dayRole=DAY_ROLES.find(d=>d.day===r.day);
+                      return (
+                        <div key={i} style={{borderBottom:i<w.rides.length-1?"1px solid #0d1f30":"none"}}>
+                          <div style={{display:"flex",alignItems:"flex-start",gap:"10px",padding:"10px 14px",background:isRaceDay?"rgba(37,99,235,0.08)":isWed?"rgba(96,165,250,0.04)":isSun?"rgba(71,85,105,0.03)":"transparent"}}>
+                            {/* Day */}
+                            <div style={{minWidth:"32px",flexShrink:0}}>
+                              <div style={{fontSize:"9px",letterSpacing:"0.1em",color:dayRole?.color||"#475569",textTransform:"uppercase",fontWeight:600}}>{r.day}</div>
+                            </div>
+                            {/* Content */}
+                            <div style={{flex:1}}>
+                              <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"}}>
+                                <span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:ts.bg,color:ts.color,letterSpacing:"0.05em"}}>{ts.label}</span>
+                                <span style={{color:isRaceDay?"#93c5fd":isSun?"#475569":r.type==="REST"?"#334155":isOpt?"#64748b":"#cbd5e1",fontSize:"12px"}}>{r.subtype||r.type}</span>
+                              </div>
+                              {r.detail&&<div style={{fontSize:"11px",color:"#334155",marginTop:"3px",fontStyle:"italic"}}>{r.detail}</div>}
+                            </div>
+                            {/* Badges */}
+                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px",flexShrink:0}}>
+                              {r.miles&&<div style={{fontSize:"10px",padding:"2px 7px",background:isRaceDay?"rgba(59,130,246,0.2)":s.bg,border:`1px solid ${isRaceDay?"#3b82f6":s.border}`,borderRadius:"4px",color:isRaceDay?"#60a5fa":s.color,whiteSpace:"nowrap"}}>{r.miles} mi</div>}
+                              {lift&&<button onClick={()=>setExpandedLift(liftOpen?null:`${w.week}-${i}`)} style={{fontSize:"9px",padding:"2px 7px",background:`${LIFT_COLORS[liftKey]}15`,border:`1px solid ${LIFT_COLORS[liftKey]}40`,borderRadius:"4px",color:LIFT_COLORS[liftKey],cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{lift.icon} {lift.label}</button>}
+                            </div>
+                          </div>
+                          {liftOpen&&lift&&(
+                            <div style={{margin:"0 14px 10px",padding:"10px",background:`${LIFT_COLORS[liftKey]}0a`,border:`1px solid ${LIFT_COLORS[liftKey]}30`,borderRadius:"6px"}}>
+                              <div style={{fontSize:"9px",letterSpacing:"0.15em",color:LIFT_COLORS[liftKey],marginBottom:"7px"}}>{lift.label.toUpperCase()} — {lift.day}</div>
+                              {lift.exercises.map((ex,j)=><div key={j} style={{fontSize:"11px",color:"#64748b",padding:"2px 0",borderBottom:j<lift.exercises.length-1?`1px solid ${LIFT_COLORS[liftKey]}15`:"none"}}><span style={{color:LIFT_COLORS[liftKey],marginRight:"6px"}}>→</span>{ex}</div>)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </>)}
+
+        {/* ── WORKOUTS TAB ── */}
+        {tab==="lifts"&&(
+          <div>
+            <div style={{fontSize:"10px",letterSpacing:"0.2em",color:"#334155",marginBottom:"16px"}}>3 WORKOUTS / WEEK — Mon · Tue · Thu</div>
+            <div style={{background:"#0b1929",border:"1px solid #0f2d4a",borderRadius:"8px",padding:"14px",marginBottom:"14px"}}>
+              <div style={{fontSize:"10px",letterSpacing:"0.15em",color:"#3b82f6",marginBottom:"8px"}}>HOW IT FITS</div>
+              <div style={{color:"#64748b",lineHeight:1.8,fontSize:"12px"}}>
+                <span style={{color:"#4ade80"}}>Mon</span> — Legs + Arms only, no riding. Heaviest gym day.<br/>
+                <span style={{color:"#f97316"}}>Tue</span> — Upper Body Push, then hop on the bike (Peloton or short outdoor).<br/>
+                <span style={{color:"#60a5fa"}}>Thu</span> — Full Body Pull only, no riding. Posterior chain focus.<br/>
+                During taper (weeks 14–16), cut volume by 30% and drop Monday to 4 exercises. Keep weights the same — just fewer sets.
+              </div>
+            </div>
+            {Object.entries(LIFTS).map(([key,lift])=>(
+              <div key={key} style={{marginBottom:"10px",border:`1px solid ${LIFT_COLORS[key]}30`,borderRadius:"8px",overflow:"hidden",background:"#0b1929"}}>
+                <button onClick={()=>setExpandedLift(expandedLift===key?null:key)} style={{width:"100%",display:"flex",alignItems:"center",gap:"12px",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:"inherit",textAlign:"left"}}>
+                  <div style={{width:"40px",height:"40px",borderRadius:"8px",background:`${LIFT_COLORS[key]}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px"}}>{lift.icon}</div>
+                  <div>
+                    <div style={{color:LIFT_COLORS[key],fontSize:"13px",fontWeight:500}}>{lift.label}</div>
+                    <div style={{fontSize:"10px",color:"#334155",marginTop:"2px"}}>{lift.day} · {key==="legsarms"?"No riding this day":key==="push"?"Lift first, then short ride":"No riding this day"}</div>
+                  </div>
+                  <span style={{marginLeft:"auto",color:"#334155"}}>{expandedLift===key?"▲":"▼"}</span>
+                </button>
+                {expandedLift===key&&(
+                  <div style={{borderTop:`1px solid ${LIFT_COLORS[key]}20`,padding:"12px 16px"}}>
+                    {lift.exercises.map((ex,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:"8px",padding:"7px 0",borderBottom:i<lift.exercises.length-1?`1px solid ${LIFT_COLORS[key]}10`:"none"}}>
+                        <span style={{color:LIFT_COLORS[key],fontSize:"10px"}}>→</span>
+                        <span style={{color:"#94a3b8",fontSize:"12px"}}>{ex}</span>
+                      </div>
+                    ))}
+                    <div style={{marginTop:"12px",padding:"10px",background:`${LIFT_COLORS[key]}08`,borderRadius:"6px",fontSize:"11px",color:"#475569"}}>{lift.tip}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── ROUTES TAB ── */}
+        {tab==="routes"&&(
+          <div>
+            <div style={{fontSize:"10px",letterSpacing:"0.2em",color:"#334155",marginBottom:"8px"}}>DENVER AREA RIDE ROUTES — easy → epic</div>
+            <div style={{marginBottom:"14px",padding:"10px 14px",background:"rgba(96,165,250,0.07)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:"6px",fontSize:"11px",color:"#64748b"}}>
+              <span style={{color:"#60a5fa",fontWeight:600}}>📍 Wednesday routes</span> are rideable straight from your Boulder office. <span style={{color:"#475569"}}>Weeks 1–6 use Peloton or Golden rides while you're still commuting from Denver. Boulder rides kick in week 7.</span>
+            </div>
+            {ROUTES.map(route=>{
+              const isOpen=expandedRoute===route.id;
+              const dc={"Easy":"#4ade80","Easy–Medium":"#86efac","Medium":"#fbbf24","Medium–Hard":"#fb923c","Hard":"#f97316","Very Hard":"#f87171"}[route.difficulty]||"#94a3b8";
+              return (
+                <div key={route.id} style={{marginBottom:"8px",border:`1px solid ${route.wednesday?"rgba(96,165,250,0.3)":`${route.color}25`}`,borderRadius:"8px",overflow:"hidden",background:"#0b1929"}}>
+                  <button onClick={()=>setExpandedRoute(isOpen?null:route.id)} style={{width:"100%",display:"flex",alignItems:"center",gap:"10px",padding:"12px 14px",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",color:"inherit",textAlign:"left"}}>
+                    <div style={{minWidth:"6px",height:"42px",borderRadius:"3px",background:route.wednesday?"#60a5fa":route.color,flexShrink:0}}/>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"}}>
+                        <span style={{color:"#e2e8f0",fontSize:"13px"}}>{route.name}</span>
+                        {route.wednesday&&<span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:"rgba(96,165,250,0.12)",color:"#60a5fa"}}>📍 Wed</span>}
+                      </div>
+                      <div style={{display:"flex",gap:"8px",marginTop:"3px",flexWrap:"wrap"}}>
+                        <span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:"rgba(148,163,184,0.1)",color:"#64748b"}}>{route.type}</span>
+                        <span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"3px",background:`${dc}18`,color:dc}}>{route.difficulty}</span>
+                        <span style={{fontSize:"9px",color:"#475569"}}>{route.distance} · {route.gain}</span>
+                      </div>
+                    </div>
+                    <span style={{color:"#334155",fontSize:"12px",flexShrink:0}}>{isOpen?"▲":"▼"}</span>
+                  </button>
+                  {isOpen&&(
+                    <div style={{borderTop:`1px solid ${route.wednesday?"rgba(96,165,250,0.2)":`${route.color}20`}`,padding:"12px 14px 14px"}}>
+                      <div style={{fontSize:"11px",color:"#64748b",lineHeight:1.7,marginBottom:"10px"}}>{route.notes}</div>
+                      <div style={{fontSize:"9px",letterSpacing:"0.15em",color:route.wednesday?"#60a5fa":route.color,marginBottom:"6px"}}>BEST FOR</div>
+                      <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+                        {route.bestFor.map(b=><span key={b} style={{fontSize:"10px",padding:"2px 8px",borderRadius:"4px",background:route.wednesday?"rgba(96,165,250,0.1)":`${route.color}12`,color:route.wednesday?"#60a5fa":route.color,border:`1px solid ${route.wednesday?"rgba(96,165,250,0.25)":`${route.color}25`}`}}>{b}</span>)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <div style={{marginTop:"16px",padding:"14px",background:"#0b1929",border:"1px solid rgba(96,165,250,0.2)",borderRadius:"8px"}}>
+              <div style={{fontSize:"9px",letterSpacing:"0.2em",color:"#3b82f6",marginBottom:"10px"}}>WEDNESDAY PROGRESSION</div>
+              <div style={{color:"#475569",fontSize:"11px",lineHeight:2}}>
+                <span style={{color:"#4ade80"}}>W1:</span> Peloton incline ride — build climbing legs at home<br/>
+                <span style={{color:"#4ade80"}}>W2:</span> Peaks to Plains short — Golden, easy Clear Creek Canyon<br/>
+                <span style={{color:"#4ade80"}}>W3:</span> Peloton climb intervals — 5×6 min hard incline<br/>
+                <span style={{color:"#4ade80"}}>W4:</span> Peloton easy incline — deload<br/>
+                <span style={{color:"#fbbf24"}}>W5:</span> Peaks to Plains full canyon (~1,200 ft) — Golden<br/>
+                <span style={{color:"#fbbf24"}}>W6:</span> Lookout Mountain from Golden (~1,500 ft)<br/>
+                <span style={{color:"#fbbf24",fontStyle:"italic"}}>↓ Boulder job starts — switching to Boulder Wednesdays ↓</span><br/>
+                <span style={{color:"#fbbf24"}}>W7:</span> Sugarloaf + Four Mile Canyon loop (~2,000 ft)<br/>
+                <span style={{color:"#f97316"}}>W9:</span> Left Hand Canyon — further each week (~2,000 ft)<br/>
+                <span style={{color:"#f97316"}}>W10:</span> Left Hand Canyon → Ward (~3,000 ft) 🔥<br/>
+                <span style={{color:"#f97316"}}>W11:</span> Sugarloaf + Four Mile at race effort (~2,500 ft)<br/>
+                <span style={{color:"#60a5fa"}}>W13:</span> Left Hand Canyon at race pace — final hard Wednesday<br/>
+                <span style={{color:"#60a5fa"}}>W14–15:</span> Easy Boulder Creek only — protect legs
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
